@@ -11,6 +11,7 @@ from os import getcwd, path
 '''
 remoteAppClient run appName
 remoteAppClient install appName
+remoteAppClient uninstall appName
 remoteAppClient checkUpdates appName
 remoteAppclient listInstalledApps
 remoteAppclient listServerApps
@@ -42,6 +43,9 @@ def runApp(appName : str) -> [bool, str]:
 def installApp(appName : str) -> [bool, str]:
 	from ftplib import FTP
 	print('install...')
+
+def uninstallApp(appName : str) -> [bool, str]:
+	print('uninstall...')
 
 def checkUpdatesApp(appName : str) -> [bool, str]:
 	pass
@@ -95,6 +99,14 @@ if __name__ == '__main__':
 			ret, msgRet = False, "install command error!"
 		else:
 			ret, msgRet = installApp(appName)
+
+	elif argv[1] == 'uninstallApp':
+		try:
+			appName = argv[2]
+		except:
+			ret, msgRet = False, "uninstallApp command error!"
+		else:
+			ret, msgRet = uninstallAppApp(appName)
 
 	elif argv[1] == 'checkUpdates':
 		ret, msgRet = checkUpdatesApp()
