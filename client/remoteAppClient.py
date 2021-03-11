@@ -6,7 +6,7 @@
 # MIT license
 
 from sys import argv, exit
-from os import getcwd, path
+from os import getcwd, path, mkdir
 
 '''
 remoteAppClient run appName
@@ -47,9 +47,6 @@ def installApp(appName : str) -> [bool, str]:
 def uninstallApp(appName : str) -> [bool, str]:
 	print('uninstall...')
 
-def checkUpdatesApp(appName : str) -> [bool, str]:
-	pass
-
 def listInstalledAppsApp() -> [bool, str]:
 	pass
 
@@ -74,6 +71,31 @@ def printRemoteAppClient_help():
 	print(f"Apps data path.....: [{remoteAppClient_Data_FullPath}]")
 	print(f"Backups............: [{remoteAppClient_Bkps_FullPath}]")
 
+def createPaths() -> [bool, str]:
+	global remoteAppClient_Install_FullPath
+	global remoteAppClient_Data_FullPath
+	global remoteAppClient_Bkps_FullPath
+
+	if path.isdir(remoteAppClient_Install_FullPath) == False:
+		try:
+			mkdir(remoteAppClient_Install_FullPath)
+		except:
+			return [False, remoteAppClient_Install_FullPath]
+
+	if path.isdir(remoteAppClient_Data_FullPath) == False:
+		try:
+			mkdir(remoteAppClient_Data_FullPath)
+		except:
+			return [False, remoteAppClient_Data_FullPath]
+
+	if path.isdir(remoteAppClient_Bkps_FullPath) == False:
+		try:
+			mkdir(remoteAppClient_Bkps_FullPath)
+		except:
+			return [False, remoteAppClient_Bkps_FullPath]
+
+	return [True, "Ok"]
+
 if __name__ == '__main__':
 
 	if len(argv) == 1:
@@ -83,6 +105,11 @@ if __name__ == '__main__':
 	ret = 0
 	msgRet = ''
 	appName = ''
+
+	ret, msgRet = createPaths()
+	if ret == False:
+		print(f'ERROR: creating working paths [{msgRet}].')
+		exit(-1)
 
 	if argv[1] == 'run':
 		try:
@@ -108,28 +135,19 @@ if __name__ == '__main__':
 		else:
 			ret, msgRet = uninstallAppApp(appName)
 
-	elif argv[1] == 'checkUpdates':
-		ret, msgRet = checkUpdatesApp()
-
 	elif argv[1] == 'listInstalledApps':
 		ret, msgRet = listInstalledAppsApp()
 
 	elif arg[1] == 'listServerApps':
-		try:
-			server = argv[2]
-		except:
-			ret, msgRet = False, "list server apps command error!"
-		else:
-			ret, msgRet = listServerAppsApp(server)
+		ret, msgRet = listServerAppsApp()
 
 	elif argv[1] == 'update':
 		try:
 			appName = argv[2]
-			server = argv[3]
 		except:
 			ret, msgRet = False, "update command error!"
 		else:
-			ret, msgRet = updateApp(appName, server)
+			ret, msgRet = updateApp(appName)
 
 	else:
 		print(f'Unknow option: [{argv[1]}]')
