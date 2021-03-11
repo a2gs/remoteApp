@@ -25,8 +25,8 @@ remoteAppClient update appName
 server = "localhost"
 remoteAppClient_path = getcwd()
 remoteAppClient_Install_Path = 'installed'
-remoteAppClient_Data_Path = 'appDatas'
-remoteAppClient_Bkps_Path = 'appBackups'
+remoteAppClient_Data_Path = 'data'
+remoteAppClient_Bkps_Path = 'backup'
 remoteAppClient_Install_FullPath = path.join(remoteAppClient_path, remoteAppClient_Install_Path)
 remoteAppClient_Data_FullPath = path.join(remoteAppClient_path, remoteAppClient_Data_Path)
 remoteAppClient_Bkps_FullPath = path.join(remoteAppClient_path, remoteAppClient_Bkps_Path)
