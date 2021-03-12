@@ -7,6 +7,7 @@
 
 from sys import argv, exit
 from os import getcwd, path, mkdir
+from ftplib import FTP
 from remoteAppClientCfg import racCfg
 
 '''
@@ -34,17 +35,26 @@ def runApp(appName : str) -> [bool, str]:
 	return [True, "Ok!"]
 
 def installApp(appName : str) -> [bool, str]:
-	from ftplib import FTP
 	print('install...')
 
 def uninstallApp(appName : str) -> [bool, str]:
 	print('uninstall...')
 
 def listInstalledAppsApp() -> [bool, str]:
-	pass
+	print('installed apps')
 
 def listServerAppsApp() -> [bool, str]:
-	pass
+	global remoteAppClient_server, remoteAppClient_server_user, remoteAppClient_server_passwd
+
+	ftpapp = FTP(host = remoteAppClient_server,
+	             user = remoteAppClient_server_user,
+	             passwd = remoteAppClient_server_passwd,
+	             timeout = 20)
+
+	with ftpapp.retrlines('apps.txt') as al:
+		print(f'Server app: [{al}]')
+
+	ftpapp.quit()
 
 def updateApp(appName : str) -> [bool, str]:
 	pass
@@ -66,9 +76,7 @@ def printRemoteAppClient_help():
 	print(f"Backups............: [{remoteAppClient_Bkps_FullPath}]")
 
 def createPaths() -> [bool, str]:
-	global remoteAppClient_Install_FullPath
-	global remoteAppClient_Data_FullPath
-	global remoteAppClient_Bkps_FullPath
+	global remoteAppClient_Install_FullPath, remoteAppClient_Data_FullPath, remoteAppClient_Bkps_FullPath
 
 	if path.isdir(remoteAppClient_Install_FullPath) == False:
 		try:
@@ -101,7 +109,7 @@ def checkCfg(ret : bool, section : str, key : str):
 	ret, value = cfg.get(section, key)
 
 	if ret == False:
-		print('There is no [address] configuration in [SERVER] section into [rac.cfg].')
+		print('There is no [{key}] configuration in [{section}] section into file [{cfgFile}].')
 		exit(-1)
 
 	return value
@@ -118,6 +126,7 @@ remoteAppClient_Data_FullPath = path.join(remoteAppClient_path, remoteAppClient_
 remoteAppClient_Bkps_FullPath = path.join(remoteAppClient_path, remoteAppClient_Bkps_Path)
 
 del cfg
+del cfgFile
 
 if __name__ == '__main__':
 
@@ -161,7 +170,7 @@ if __name__ == '__main__':
 	elif argv[1] == 'listInstalledApps':
 		ret, msgRet = listInstalledAppsApp()
 
-	elif arg[1] == 'listServerApps':
+	elif argv[1] == 'listServerApps':
 		ret, msgRet = listServerAppsApp()
 
 	elif argv[1] == 'update':
