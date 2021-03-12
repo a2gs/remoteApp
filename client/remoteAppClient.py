@@ -7,6 +7,7 @@
 
 from sys import argv, exit
 from os import getcwd, path, mkdir
+from remoteAppClientCfg import racCfg
 
 '''
 remoteAppClient run appName
@@ -23,20 +24,12 @@ remoteAppClient update appName
 /remoteAppClient/appBackups/apps.zip
 '''
 
-server = "localhost"
-remoteAppClient_path = getcwd()
-remoteAppClient_Install_Path = 'installed'
-remoteAppClient_Data_Path = 'data'
-remoteAppClient_Bkps_Path = 'backup'
-remoteAppClient_Install_FullPath = path.join(remoteAppClient_path, remoteAppClient_Install_Path)
-remoteAppClient_Data_FullPath = path.join(remoteAppClient_path, remoteAppClient_Data_Path)
-remoteAppClient_Bkps_FullPath = path.join(remoteAppClient_path, remoteAppClient_Bkps_Path)
-
 def runApp(appName : str) -> [bool, str]:
 	import importlib
 
 	app = importlib.import_module(f"installed.{appName}")
 	app.run()
+	app.version()
 
 	return [True, "Ok!"]
 
@@ -65,7 +58,8 @@ def printRemoteAppClient_help():
 	print("remoteAppClient update appName")
 	print("")
 	print("Default configuration:")
-	print(f"App server.........: [{server}]")
+	print(f"Server.............: [{remoteAppClient_server_user}@{remoteAppClient_server}]")
+	print(f"Password...........: [{remoteAppClient_server_passwd}]")
 	print(f"Path...............: [{remoteAppClient_path}]")
 	print(f"Installed Apps path: [{remoteAppClient_Install_FullPath}]")
 	print(f"Apps data path.....: [{remoteAppClient_Data_FullPath}]")
@@ -95,6 +89,35 @@ def createPaths() -> [bool, str]:
 			return [False, remoteAppClient_Bkps_FullPath]
 
 	return [True, "Ok"]
+
+# ---------------------------------------------------------------------
+
+cfgFile = 'rac.cfg'
+cfg = racCfg(cfgFile)
+
+def checkCfg(ret : bool, section : str, key : str):
+	global cfgFile
+
+	ret, value = cfg.get(section, key)
+
+	if ret == False:
+		print('There is no [address] configuration in [SERVER] section into [rac.cfg].')
+		exit(-1)
+
+	return value
+
+remoteAppClient_server = checkCfg(cfg, 'SERVER', 'address')
+remoteAppClient_server_user = checkCfg(cfg, 'SERVER', 'user')
+remoteAppClient_server_passwd = checkCfg(cfg, 'SERVER', 'passwd')
+remoteAppClient_Install_Path = checkCfg(cfg, 'DIRECTORIES', 'install')
+remoteAppClient_Data_Path = checkCfg(cfg, 'DIRECTORIES', 'data')
+remoteAppClient_Bkps_Path = checkCfg(cfg, 'DIRECTORIES', 'backups')
+remoteAppClient_path = getcwd()
+remoteAppClient_Install_FullPath = path.join(remoteAppClient_path, remoteAppClient_Install_Path)
+remoteAppClient_Data_FullPath = path.join(remoteAppClient_path, remoteAppClient_Data_Path)
+remoteAppClient_Bkps_FullPath = path.join(remoteAppClient_path, remoteAppClient_Bkps_Path)
+
+del cfg
 
 if __name__ == '__main__':
 
