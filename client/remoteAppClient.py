@@ -25,6 +25,42 @@ remoteAppClient update appName
 /remoteAppClient/appBackups/apps.zip
 '''
 
+def connectFTP(server : str, user : str, passwd : str, timeout : int, debugLevel : int) -> [bool, str, object]:
+	try:
+		ftpapp = FTP(host    = server,
+		             user    = user,
+		             passwd  = passwd,
+		             timeout = timeout)
+
+	except error_reply as e: return [False, f'{e}', None]
+	except error_temp  as e: return [False, f'{e}', None]
+	except error_perm  as e: return [False, f'{e}', None]
+	except error_proto as e: return [False, f'{e}', None]
+	except all_errors  as e: return [False, f'{e}', None]
+	except Exception   as e: return [False, f'{e}', None]
+
+	ftpapp.set_debuglevel(debugLevel)
+
+	return [True, 'Ok', ftpapp]
+
+def execRetrFTP(conn : FTP, binascii : str, file : str, callback) -> [bool, str]:
+	try:
+		if binascii == 'BIN':
+			conn.retrbinary(f'RETR {file}', callback, blocksize = 8192)
+		elif binascii == 'ASCII':
+			conn.retrlines(f'RETR {file}', callback)
+		else:
+			return [False, f"Unknown mode [{binascii}]. Only 'BIN' or 'ASCII' allowed"]
+
+	except error_reply as e: return [False, f'{e}']
+	except error_temp  as e: return [False, f'{e}']
+	except error_perm  as e: return [False, f'{e}']
+	except error_proto as e: return [False, f'{e}']
+	except all_errors  as e: return [False, f'{e}']
+	except Exception   as e: return [False, f'{e}']
+
+	return [True, 'Ok']
+
 def runApp(appName : str) -> [bool, str]:
 	import importlib
 
@@ -44,31 +80,19 @@ def installApp(appName : str) -> [bool, str]:
 
 	global remoteAppClient_server, remoteAppClient_server_user, remoteAppClient_server_passwd, remoteAppClient_Install_FullPath
 
-	try:
-		ftpapp = FTP(host    = remoteAppClient_server,
-		             user    = remoteAppClient_server_user,
-		             passwd  = remoteAppClient_server_passwd,
-		             timeout = 20)
-
-	except error_reply as e: return [False, f'{e}']
-	except error_temp  as e: return [False, f'{e}']
-	except error_perm  as e: return [False, f'{e}']
-	except error_proto as e: return [False, f'{e}']
-	except all_errors  as e: return [False, f'{e}']
-	except Exception   as e: return [False, f'{e}']
+	ret, retMsg, ftpapp = connectFTP(remoteAppClient_server,
+	                                 remoteAppClient_server_user,
+	                                 remoteAppClient_server_passwd,
+	                                 20, 0)
+	if ret == False:
+		return [False, retMsg]
 
 	# Get package name (application full name)
 	srvapps = appList()
 
-	try:
-		ftpapp.retrlines('RETR apps.txt', srvapps.add)
-
-	except error_reply as e: return [False, f'{e}']
-	except error_temp  as e: return [False, f'{e}']
-	except error_perm  as e: return [False, f'{e}']
-	except error_proto as e: return [False, f'{e}']
-	except all_errors  as e: return [False, f'{e}']
-	except Exception   as e: return [False, f'{e}']
+	ret, retMsg = execRetrFTP(ftpapp, 'ASCII', 'apps.txt', srvapps.add)
+	if ret == False:
+		return [False, retMsg]
 
 	packNameLst = [i[2] for i in srvapps.get() if i[0] == appName]
 
@@ -76,9 +100,6 @@ def installApp(appName : str) -> [bool, str]:
 		return [False, f'Application [{appName}] does not exist']
 
 	packName = packNameLst[0]
-
-	print(ftpapp.retrlines('LIST'))
-
 	fullPathPackName = path.join(remoteAppClient_Install_FullPath, packName)
 
 	# Get the package
@@ -86,16 +107,9 @@ def installApp(appName : str) -> [bool, str]:
 	print(f'Downloading: [{packName}]')
 
 	with open(fullPathPackName, 'wb') as fp:
-
-		try:
-			ftpapp.retrbinary(f'RETR packName', fp.write, blocksize = 8192)
-
-		except error_reply as e: return [False, f'aaa {e}']
-		except error_temp  as e: return [False, f'bbb {e}']
-		except error_perm  as e: return [False, f'ccc {e}']
-		except error_proto as e: return [False, f'ddd {e}']
-		except all_errors  as e: return [False, f'eee {e}']
-		except Exception   as e: return [False, f'fff {e}']
+		ret, retMsg = execRetrFTP(ftpapp, 'BIN', packName, fp.write)
+		if ret == False:
+			return [False, retMsg]
 
 	ftpapp.quit()
 
@@ -142,30 +156,18 @@ class appList():
 def listServerAppsApp() -> [bool, str]:
 	global remoteAppClient_server, remoteAppClient_server_user, remoteAppClient_server_passwd
 
-	try:
-		ftpapp = FTP(host    = remoteAppClient_server,
-		             user    = remoteAppClient_server_user,
-		             passwd  = remoteAppClient_server_passwd,
-		             timeout = 20)
-
-	except error_reply as e: return [False, f'{e}']
-	except error_temp  as e: return [False, f'{e}']
-	except error_perm  as e: return [False, f'{e}']
-	except error_proto as e: return [False, f'{e}']
-	except all_errors  as e: return [False, f'{e}']
-	except Exception   as e: return [False, f'{e}']
+	ret, retMsg, ftpapp = connectFTP(remoteAppClient_server,
+	                                 remoteAppClient_server_user,
+	                                 remoteAppClient_server_passwd,
+	                                 20, 0)
+	if ret == False:
+		return [False, retMsg]
 
 	srvapps = appList()
 
-	try:
-		ftpapp.retrlines('RETR apps.txt', srvapps.add)
-
-	except error_reply as e: return [False, f'{e}']
-	except error_temp  as e: return [False, f'{e}']
-	except error_perm  as e: return [False, f'{e}']
-	except error_proto as e: return [False, f'{e}']
-	except all_errors  as e: return [False, f'{e}']
-	except Exception   as e: return [False, f'{e}']
+	ret, retMsg = execRetrFTP(ftpapp, 'ASCII', 'apps.txt', srvapps.add)
+	if ret == False:
+		return [False, retMsg]
 
 	ftpapp.quit()
 
