@@ -6,8 +6,8 @@
 # MIT license
 
 from sys import argv, exit
-from os import getcwd, path, mkdir
-from ftplib import FTP
+from os import getcwd, path, mkdir, walk
+from ftplib import FTP, error_reply, error_temp, error_perm, error_proto, all_errors
 from remoteAppClientCfg import racCfg
 
 '''
@@ -32,29 +32,67 @@ def runApp(appName : str) -> [bool, str]:
 	app.run()
 	app.version()
 
-	return [True, "Ok!"]
+	return [True, "Ok"]
 
 def installApp(appName : str) -> [bool, str]:
 	print('install...')
+	return [True, 'Ok']
 
 def uninstallApp(appName : str) -> [bool, str]:
 	print('uninstall...')
+	return [True, 'Ok']
 
 def listInstalledAppsApp() -> [bool, str]:
-	print('installed apps')
+	print('list installed...')
+	return [True, 'Ok']
+
+class appList():
+	applist = []
+
+	def __init__(self):
+		pass
+
+	def add(self, appdesc : str):
+		app = appdesc.split('\t')
+		self.applist.append(app)
+
+	def get(self) -> []:
+		return self.applist
 
 def listServerAppsApp() -> [bool, str]:
 	global remoteAppClient_server, remoteAppClient_server_user, remoteAppClient_server_passwd
 
-	ftpapp = FTP(host = remoteAppClient_server,
-	             user = remoteAppClient_server_user,
-	             passwd = remoteAppClient_server_passwd,
-	             timeout = 20)
+	try:
+		ftpapp = FTP(host    = remoteAppClient_server,
+		             user    = remoteAppClient_server_user,
+		             passwd  = remoteAppClient_server_passwd,
+		             timeout = 20)
 
-	with ftpapp.retrlines('apps.txt') as al:
-		print(f'Server app: [{al}]')
+	except error_reply as e: return [False, f'{e}']
+	except error_temp  as e: return [False, f'{e}']
+	except error_perm  as e: return [False, f'{e}']
+	except error_proto as e: return [False, f'{e}']
+	except all_errors  as e: return [False, f'{e}']
+	except Exception   as e: return [False, f'{e}']
+
+	srvapps = appList()
+
+	try:
+		ftpapp.retrlines('RETR apps.txt', srvapps.add)
+
+	except error_reply as e: return [False, f'{e}']
+	except error_temp  as e: return [False, f'{e}']
+	except error_perm  as e: return [False, f'{e}']
+	except error_proto as e: return [False, f'{e}']
+	except all_errors  as e: return [False, f'{e}']
+	except Exception   as e: return [False, f'{e}']
 
 	ftpapp.quit()
+
+	print(f"{'Application':30} | {'Version':10} | Package")
+	[print(f'{i[0]:30} | {i[1]:10} | {i[2]}') for i in srvapps.get()]
+
+	return [True, 'Ok']
 
 def updateApp(appName : str) -> [bool, str]:
 	pass
@@ -114,16 +152,16 @@ def checkCfg(ret : bool, section : str, key : str):
 
 	return value
 
-remoteAppClient_server = checkCfg(cfg, 'SERVER', 'address')
-remoteAppClient_server_user = checkCfg(cfg, 'SERVER', 'user')
+remoteAppClient_server        = checkCfg(cfg, 'SERVER', 'address')
+remoteAppClient_server_user   = checkCfg(cfg, 'SERVER', 'user')
 remoteAppClient_server_passwd = checkCfg(cfg, 'SERVER', 'passwd')
-remoteAppClient_Install_Path = checkCfg(cfg, 'DIRECTORIES', 'install')
-remoteAppClient_Data_Path = checkCfg(cfg, 'DIRECTORIES', 'data')
-remoteAppClient_Bkps_Path = checkCfg(cfg, 'DIRECTORIES', 'backups')
-remoteAppClient_path = getcwd()
+remoteAppClient_Install_Path  = checkCfg(cfg, 'DIRECTORIES', 'install')
+remoteAppClient_Data_Path     = checkCfg(cfg, 'DIRECTORIES', 'data')
+remoteAppClient_Bkps_Path     = checkCfg(cfg, 'DIRECTORIES', 'backups')
+remoteAppClient_path             = getcwd()
 remoteAppClient_Install_FullPath = path.join(remoteAppClient_path, remoteAppClient_Install_Path)
-remoteAppClient_Data_FullPath = path.join(remoteAppClient_path, remoteAppClient_Data_Path)
-remoteAppClient_Bkps_FullPath = path.join(remoteAppClient_path, remoteAppClient_Bkps_Path)
+remoteAppClient_Data_FullPath    = path.join(remoteAppClient_path, remoteAppClient_Data_Path)
+remoteAppClient_Bkps_FullPath    = path.join(remoteAppClient_path, remoteAppClient_Bkps_Path)
 
 del cfg
 del cfgFile
@@ -185,7 +223,7 @@ if __name__ == '__main__':
 		print(f'Unknow option: [{argv[1]}]')
 		exit(-1)
 
-	if(ret == False):
+	if ret == False:
 		print(f'ERROR: [{msgRet}]')
 		exit(-1)
 
