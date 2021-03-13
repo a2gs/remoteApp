@@ -43,7 +43,24 @@ def uninstallApp(appName : str) -> [bool, str]:
 	return [True, 'Ok']
 
 def listInstalledAppsApp() -> [bool, str]:
-	print('list installed...')
+	import importlib
+
+	global remoteAppClient_Install_FullPath
+
+	instapp = [x for x in walk(remoteAppClient_Install_FullPath)]
+
+	if len(instapp) == 1:
+		print('No one application installed')
+
+	else:
+		print(f"{'Application':30} | Version")
+		for i in instapp[0][1:]:
+
+			if len(i) == 0: continue
+
+			appVersion = importlib.import_module(f"installed.{i[0]}")
+			print(f"{i[0]:30} | {appVersion.version()}")
+
 	return [True, 'Ok']
 
 class appList():
