@@ -6,8 +6,9 @@
 # MIT license
 
 from sys import argv, exit
-from os import getcwd, path, mkdir, walk
+from os import getcwd, path, mkdir, walk, remove
 from ftplib import FTP, error_reply, error_temp, error_perm, error_proto, all_errors
+import zipfile
 from remoteAppClientCfg import racCfg
 
 '''
@@ -104,14 +105,23 @@ def installApp(appName : str) -> [bool, str]:
 
 	# Get the package
 
-	print(f'Downloading: [{packName}]')
-
 	with open(fullPathPackName, 'wb') as fp:
 		ret, retMsg = execRetrFTP(ftpapp, 'BIN', packName, fp.write)
 		if ret == False:
 			return [False, retMsg]
 
 	ftpapp.quit()
+
+	try:
+		with zipfile.ZipFile(fullPathPackName, 'r') as zip_ref:
+			zip_ref.extractall(path.join(remoteAppClient_Install_FullPath, appName))
+	except:
+		return [False, f'Erro unzipping file {fullPathPackName}']
+
+	try:
+		remove(fullPathPackName)
+	except:
+		return [False, f'Erro deleting file {fullPathPackName}']
 
 	return [True, 'Ok']
 
