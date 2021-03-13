@@ -8,8 +8,8 @@
 from sys import argv, exit
 from os import getcwd, path, mkdir, walk, remove
 from ftplib import FTP, error_reply, error_temp, error_perm, error_proto, all_errors
-import zipfile
 from remoteAppClientCfg import racCfg
+import zipfile
 
 '''
 remoteAppClient run appName
@@ -65,8 +65,19 @@ def execRetrFTP(conn : FTP, binascii : str, file : str, callback) -> [bool, str]
 def runApp(appName : str) -> [bool, str]:
 	import importlib
 
-	app = importlib.import_module(f"installed.{appName}")
-	app.run()
+	try:
+		app = importlib.import_module(f"installed.{appName}")
+	except ImportError as e:
+		return [False, f"Erro: Unable to import [{appName}]: [{e}]"]
+	except Exception as e:
+		return [False, f"Erro: Generic error importing [{appName}]: [{e}]"]
+
+	try:
+		app.run()
+	except AttributeError as e:
+		return [False, f"Erro: There is no 'run' method in [{appName}]: [{e}]"]
+	except Exception as e:
+		return [False, f"Erro: Unable to call 'run' ethod in [{appName}]: [{e}]"]
 
 	return [True, "Ok"]
 
@@ -79,7 +90,8 @@ def installApp(appName : str) -> [bool, str]:
 		subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 	'''
 
-	global remoteAppClient_server, remoteAppClient_server_user, remoteAppClient_server_passwd, remoteAppClient_Install_FullPath
+	global remoteAppClient_server, remoteAppClient_server_user, remoteAppClient_server_passwd
+	global remoteAppClient_Install_FullPath
 
 	ret, retMsg, ftpapp = connectFTP(remoteAppClient_server,
 	                                 remoteAppClient_server_user,
@@ -134,19 +146,27 @@ def listInstalledAppsApp() -> [bool, str]:
 
 	global remoteAppClient_Install_FullPath
 
-	instapp = [x for x in walk(remoteAppClient_Install_FullPath)]
+	instapp = [x for x in next(walk(remoteAppClient_Install_FullPath))][1]
 
-	if len(instapp) == 1:
+	if len(instapp) == 0:
 		print('No one application installed')
 
 	else:
 		print(f"{'Application':30} | Version")
-		for i in instapp[0][1:]:
 
-			if len(i) == 0: continue
+		for i in instapp:
 
-			appVersion = importlib.import_module(f"installed.{i[0]}")
-			print(f"{i[0]:30} | {appVersion.version()}")
+			if path.isdir(path.join(remoteAppClient_Install_FullPath, i)) == False: continue
+
+			try:
+				appVersion = importlib.import_module(f"installed.{i}")
+			except:
+				continue # This is not a valid 'remoteApplication' module
+
+			try:
+				print(f"{i:30} | {appVersion.version()}")
+			except:
+				continue
 
 	return [True, 'Ok']
 
