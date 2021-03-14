@@ -62,6 +62,22 @@ def execRetrFTP(conn : FTP, binascii : str, file : str, callback) -> [bool, str]
 
 	return [True, 'Ok']
 
+def getAppVersion(app : str) -> [bool, str, object]:
+	import importlib
+
+	try:
+		appVersion = importlib.import_module(f"installed.{app}")
+	except:
+		return [False, f'Unable to import [{app}] to get version', None]
+
+	ver = ''
+	try:
+		ver = appVersion.version()
+	except:
+		return [False, f'Unable to get version of application [{app}]', None]
+
+	return [True, 'Ok', ver]
+
 def runApp(appName : str) -> [bool, str]:
 	import importlib
 
@@ -77,18 +93,25 @@ def runApp(appName : str) -> [bool, str]:
 	except AttributeError as e:
 		return [False, f"Erro: There is no 'run' method in [{appName}]: [{e}]"]
 	except Exception as e:
-		return [False, f"Erro: Unable to call 'run' ethod in [{appName}]: [{e}]"]
+		return [False, f"Erro: Unable to call 'run' method in [{appName}]: [{e}]"]
 
 	return [True, "Ok"]
 
-def installApp(appName : str) -> [bool, str]:
-	'''
+def installDependence(dep : str) -> [bool, str]:
 	import subprocess
-	import sys
 
-	def install(package):
-		subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-	'''
+	print(f'Installing [{dep}]')
+
+	try:
+		#subprocess.check_call([sys.executable, "-m", "pip", "install", dep])
+		subprocess.run([sys.executable, "-m", "pip", "install", dep])
+	except:
+		return [False, 'Fail']
+
+	return [True, 'Ok']
+
+def installApp(appName : str) -> [bool, str]:
+	import importlib
 
 	global remoteAppClient_server, remoteAppClient_server_user, remoteAppClient_server_passwd
 	global remoteAppClient_Install_FullPath
@@ -135,10 +158,72 @@ def installApp(appName : str) -> [bool, str]:
 	except:
 		return [False, f'Erro deleting file {fullPathPackName}']
 
+	# Installing dependences
+
+	try:
+		appDeps = importlib.import_module(f"installed.{appName}")
+	except ImportError as e:
+		return [False, f"Erro: Unable to import [{appName}] to install dependences: [{e}]"]
+	except Exception as e:
+		return [False, f"Erro: Generic error importing [{appName}] to install dependences: [{e}]"]
+
+	print(f'Dependencias {appDeps.dependences()}')
+
+	try:
+		for i in appDeps.dependences():
+			ret, retMsg = installDependence(i)
+
+			if ret == False:
+				print(f'Error [{retMsg}]')
+
+	except AttributeError as e:
+		return [False, f"Erro: There is no 'dependences' method in [{appName}]: [{e}]"]
+	except Exception as e:
+		return [False, f"Erro: Unable to call 'dependences' method in [{appName}]: [{e}]"]
+
 	return [True, 'Ok']
 
 def uninstallApp(appName : str) -> [bool, str]:
-	print('uninstall...')
+	import datetime
+
+	now = datetime.datetime.now()
+	nowtag = now.strftime('%Y%m%d%H%M%S')
+
+	ret, retMsg, ver = getAppVersion(appName)
+	if ret == False:
+		return [False, retMsg]
+
+	appFullPath = path.join('installed', appName)
+	appFullPathBackup = path.join('backup', appName)
+
+	if path.isdir(appFullPath) == False:
+		return [False, f'There is no {appFullPath} installed']
+
+	print(f'app.....: [{appFullPath}]')
+
+	walkdir = walk(appFullPath)
+	appFullPathZip = appFullPathBackup + '_' + ver + '_' + nowtag + '.zip'
+
+	print(f'creating: [{appFullPathZip}]')
+
+	ziphandle = zipfile.ZipFile(appFullPathZip, 'w')
+
+	for i in walkdir:
+		if i[0].find('__pycache__') != -1: continue
+
+		for i1 in i[1]: # Directories
+			if i1.find('__pycache__') != -1: continue
+			fs = path.join(i[0], i1)
+			fszip = path.join(i[0][len('installed\\'):], i1)
+			ziphandle.write(fs, fszip, compress_type = zipfile.ZIP_DEFLATED)
+
+		for i2 in i[2]: # Files
+			fs = path.join(i[0], i2)
+			fszip = path.join(i[0][len('installed\\'):], i2)
+			ziphandle.write(fs, fszip, compress_type = zipfile.ZIP_DEFLATED)
+
+	ziphandle.close()
+
 	return [True, 'Ok']
 
 def listInstalledAppsApp() -> [bool, str]:
@@ -158,15 +243,11 @@ def listInstalledAppsApp() -> [bool, str]:
 
 			if path.isdir(path.join(remoteAppClient_Install_FullPath, i)) == False: continue
 
-			try:
-				appVersion = importlib.import_module(f"installed.{i}")
-			except:
-				continue # This is not a valid 'remoteApplication' module
-
-			try:
-				print(f"{i:30} | {appVersion.version()}")
-			except:
+			ret, retMsg, ver = getAppVersion(i)
+			if ret == False:
 				continue
+
+			print(f"{i:30} | {ver}")
 
 	return [True, 'Ok']
 
@@ -309,13 +390,13 @@ if __name__ == '__main__':
 		else:
 			ret, msgRet = installApp(appName)
 
-	elif argv[1] == 'uninstallApp':
+	elif argv[1] == 'uninstall':
 		try:
 			appName = argv[2]
 		except:
-			ret, msgRet = False, "uninstallApp command error!"
+			ret, msgRet = False, "uninstall command error!"
 		else:
-			ret, msgRet = uninstallAppApp(appName)
+			ret, msgRet = uninstallApp(appName)
 
 	elif argv[1] == 'listInstalledApps':
 		ret, msgRet = listInstalledAppsApp()
