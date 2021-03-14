@@ -7,6 +7,7 @@
 
 from sys import argv, exit
 from os import getcwd, path, mkdir, walk, remove
+from shutil import rmtree
 from ftplib import FTP, error_reply, error_temp, error_perm, error_proto, all_errors
 from remoteAppClientCfg import racCfg
 import zipfile
@@ -65,8 +66,10 @@ def execRetrFTP(conn : FTP, binascii : str, file : str, callback) -> [bool, str]
 def getAppVersion(app : str) -> [bool, str, object]:
 	import importlib
 
+	global remoteAppClient_Install_Path
+
 	try:
-		appVersion = importlib.import_module(f"installed.{app}")
+		appVersion = importlib.import_module(f"{remoteAppClient_Install_Path}.{app}")
 	except:
 		return [False, f'Unable to import [{app}] to get version', None]
 
@@ -81,8 +84,10 @@ def getAppVersion(app : str) -> [bool, str, object]:
 def runApp(appName : str) -> [bool, str]:
 	import importlib
 
+	global remoteAppClient_Install_Path
+
 	try:
-		app = importlib.import_module(f"installed.{appName}")
+		app = importlib.import_module(f"{remoteAppClient_Install_Path}.{appName}")
 	except ImportError as e:
 		return [False, f"Erro: Unable to import [{appName}]: [{e}]"]
 	except Exception as e:
@@ -114,7 +119,7 @@ def installApp(appName : str) -> [bool, str]:
 	import importlib
 
 	global remoteAppClient_server, remoteAppClient_server_user, remoteAppClient_server_passwd
-	global remoteAppClient_Install_FullPath
+	global remoteAppClient_Install_FullPath, remoteAppClient_Install_Path
 
 	ret, retMsg, ftpapp = connectFTP(remoteAppClient_server,
 	                                 remoteAppClient_server_user,
@@ -161,7 +166,7 @@ def installApp(appName : str) -> [bool, str]:
 	# Installing dependences
 
 	try:
-		appDeps = importlib.import_module(f"installed.{appName}")
+		appDeps = importlib.import_module(f"{remoteAppClient_Install_Path}.{appName}")
 	except ImportError as e:
 		return [False, f"Erro: Unable to import [{appName}] to install dependences: [{e}]"]
 	except Exception as e:
@@ -186,6 +191,8 @@ def installApp(appName : str) -> [bool, str]:
 def uninstallApp(appName : str) -> [bool, str]:
 	import datetime
 
+	global remoteAppClient_Install_Path, remoteAppClient_Bkps_Path
+
 	now = datetime.datetime.now()
 	nowtag = now.strftime('%Y%m%d%H%M%S')
 
@@ -193,18 +200,16 @@ def uninstallApp(appName : str) -> [bool, str]:
 	if ret == False:
 		return [False, retMsg]
 
-	appFullPath = path.join('installed', appName)
-	appFullPathBackup = path.join('backup', appName)
+	appFullPath = path.join(remoteAppClient_Install_Path, appName)
+	appFullPathBackup = path.join(remoteAppClient_Bkps_Path, appName)
 
 	if path.isdir(appFullPath) == False:
 		return [False, f'There is no {appFullPath} installed']
 
-	print(f'app.....: [{appFullPath}]')
-
 	walkdir = walk(appFullPath)
 	appFullPathZip = appFullPathBackup + '_' + ver + '_' + nowtag + '.zip'
 
-	print(f'creating: [{appFullPathZip}]')
+	trimInstalledPAth = len(f'{remoteAppClient_Install_Path}\\')
 
 	ziphandle = zipfile.ZipFile(appFullPathZip, 'w')
 
@@ -213,16 +218,26 @@ def uninstallApp(appName : str) -> [bool, str]:
 
 		for i1 in i[1]: # Directories
 			if i1.find('__pycache__') != -1: continue
+
 			fs = path.join(i[0], i1)
-			fszip = path.join(i[0][len('installed\\'):], i1)
+			fszip = path.join(i[0][trimInstalledPAth:], i1)
+
 			ziphandle.write(fs, fszip, compress_type = zipfile.ZIP_DEFLATED)
 
 		for i2 in i[2]: # Files
 			fs = path.join(i[0], i2)
-			fszip = path.join(i[0][len('installed\\'):], i2)
+			fszip = path.join(i[0][trimInstalledPAth:], i2)
+
 			ziphandle.write(fs, fszip, compress_type = zipfile.ZIP_DEFLATED)
 
 	ziphandle.close()
+
+	rmtree(appFullPath)
+
+	###
+	### TODO
+	### To do the same to Data/appName directory
+	###
 
 	return [True, 'Ok']
 
