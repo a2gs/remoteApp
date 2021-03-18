@@ -47,5 +47,10 @@ del cfg
 handler = FTPHandler
 handler.authorizer = authorizer
 
+handler.banner = "remoteApp"
+
+server.max_cons = 256
+server.max_cons_per_ip = 5
+
 server = FTPServer(("127.0.0.1", 21), handler)
 server.serve_forever()
